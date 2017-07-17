@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>chat with socket.io and node.js</title>
+	<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<style type="text/css">
+	#chat{
+		height:900px;
+		width:100%;
+		background-color: lightgreen;
+		overflow-y: scroll;
+		overflow-x: hidden;
+
+ 	}
+	#contentWrap{
+		display :none;
+
+ 	}
+	#chatWrap{
+
+		float:left;
+		border:1px black solid;
+	}
+	.error{
+		color:red;
+	}
+	.whisper{
+		color:grey;
+		font-style:italic;
+		padding: 15px;
+		margin: 40px;
+		background-color: lightpink;
+	}
+	.style{
+		width:500px;
+	}
+	.otherchat {
+	    padding: 15px;
+	    background: lightblue;
+	    margin: 40px;
+	    position: relative;
+	}
+	.otherchat:after{
+		width: 0;
+		height: 0;
+		border-top: 5px solid transparent;
+		border-right: 10px solid red;
+		border-bottom: 5px solid transparent;
+		position: absolute;
+		left: -15px;
+		display: block;
+	}
+	#setNick{
+		width:300px;
+	}
+	#channel{
+		display: block;
+		width:100%;
+		font-size:24pt;
+	}
+	/*.userNameCont:nth-child(odd){
+		background: #EEE;
+	}*/
+	.userNameCont{
+		padding-left: 60px;
+		font-size: 20px;
+		
+	}
+	</style>
+</head>
+<body>
+	<div id="nickError"></div>
+	<div id="nickWrap">
+		<p>enter a username:</p>
+		<form id="setNick">
+			<input size="35" id="nickname">
+			<input type="submit">
+		</form>
+	</div>
+
+	<div class="container-fluid">
+		<div id="contentWrap" class="col-md-4">
+			<div id="chatWrap" class="style">
+				<div id="chat"></div>
+				<form id="send-message">
+					<input size="35" id="message" style="background-color: lightgreen;">
+					<input type="submit" style="position: fixed;width: 200px;">
+				</form>
+			</div>
+			<form action="">
+				<select name="channel" id="channel">
+					<option value="channel-a">Channel A</option>
+					<option value="channel-b">Channel B</option>
+				</select>
+			</form>
+		</div>
+		
+		<div id="users" class="col-md-4"></div>
+		<div class="col-md-4"></div>
+		
+	</div>
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+	 	$(document).ready(function(){
+	 		var socket=io.connect();
+	 		var $nickForm=$('#setNick');
+	 		var $nickError=$('#nickError');
+	 		var $nickBox=$('#nickname');
+	 		var $users=$('#users');
+	 		var $messageForm=$('#send-message');
+	 		var $messageBox=$('#message');
+	 		var $chat=$('#chat');
+	 		var thisUser="xxx";
+
+ 
+	 		$nickForm.submit(function(e){
+	 			e.preventDefault();
+	 			socket.emit('new user', $nickBox.val(),function(data){
+	 				if(data){
+	 					$('#nickWrap').hide();
+	 					$('#contentWrap').show();
+	 					$nickError.hide();
+	 				}else{
+	 					$nickError.html('username is taken! Enter a separate username');
+	 				}
+
+	 			});
+	 			$nickBox.val();
+	 			$('#channel').change(function(){
+	 				socket.emit('change channel', $(channel).val());
+	 			})
+
+	 		});
+	 		
+
+	 		socket.on('usernames',function(data){
+	 			$users.html('');
+	 			for(var i=0;i<data.length;i++){
+	 				$users.append('<div class="userNameCont ">'+data[i]+"<br></div>");
+	 			}
+	 			
+	 		});
+
+	 		$messageForm.submit(function(e){
+	 			e.preventDefault();
+	 			socket.emit('send message',$messageBox.val(),function(data){
+	 				
+	 				$chat.append('<span class="error"><b>'+data+"<span></br>");
+
+	 			});
+	 			$messageBox.val('');
+	 		});
+
+	 		socket.on('load old msgs',function(docs){
+	 			for(var i=docs.length-1;i>0;i--){
+	 				displayMsg(docs[i]);
+
+	 			}
+	 		});
+
+	 		socket.on('new message',function(data){
+	 			console.log(data);
+	 			displayMsg(data);
+	 		});
+
+
+
+	 		function displayMsg(data){
+	 			if(data.nick==thisUser){
+
+	 				$chat.append('<div class="myChat"> <b>'+data.nick+':</b>'+data.msg+"<br/></div");
+	 			}else{
+	 				$chat.append('<div class="otherchat"> <b>'+data.nick+':</b>'+data.msg+"<br/></div");
+	 			}
+	 		}
+
+	 		socket.on('whisper',function(data){
+	 			$chat.append('<span class="whisper"><b>'+data.nick + ':</b>'+ data.msg+"</span></br>");
+	 		});
+	 		socket.on('change channel',function(channel){
+	 			console.log('here we are');
+	 			$chat.append('<span class="channelchange"><b>'+'joined:</b>'+channel+'<br>');
+	 		})
+	 	});
+	</script>
+</body>
+</html>
